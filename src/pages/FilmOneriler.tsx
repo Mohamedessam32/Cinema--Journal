@@ -1,223 +1,198 @@
-import React, { useState } from 'react';
-import { Search, Filter, ThumbsUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Search, ThumbsUp, Sparkles, Trash2, Loader2, Plus } from 'lucide-react';
 import FilmCard from '../components/FilmCard';
+import { fetchSmartRecommendations, searchMovies } from '../services/api';
 
-const FilmOneriler: React.FC = () => {
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [minRating, setMinRating] = useState<number>(7);
-  const [yearRange, setYearRange] = useState<[number, number]>([1990, 2025]);
-  const [showFilters, setShowFilters] = useState(false);
+interface FilmOnerilerProps {
+  theme?: 'light' | 'dark';
+  onMovieSelect?: (id: number) => void;
+}
 
-  // Örnek film türleri
-  const genres = [
-    'Aksiyon', 'Macera', 'Animasyon', 'Komedi', 'Suç', 'Belgesel', 
-    'Drama', 'Aile', 'Fantastik', 'Tarih', 'Korku', 'Müzik', 
-    'Gizem', 'Romantik', 'Bilim Kurgu', 'Gerilim', 'Savaş', 'Western'
-  ];
+const FilmOneriler: React.FC<FilmOnerilerProps> = ({ theme = 'light', onMovieSelect }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [likedMovies, setLikedMovies] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
 
-  // Örnek film önerileri
-  const recommendedFilms = [
-    {
-      title: 'Interstellar',
-      year: '2014',
-      director: 'Christopher Nolan',
-      rating: 8.6,
-      imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      genres: ['Bilim Kurgu', 'Macera', 'Drama'],
-    },
-    {
-      title: 'Parasite',
-      year: '2019',
-      director: 'Bong Joon Ho',
-      rating: 8.5,
-      imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      genres: ['Komedi', 'Drama', 'Gerilim'],
-    },
-    {
-      title: 'Whiplash',
-      year: '2014',
-      director: 'Damien Chazelle',
-      rating: 8.5,
-      imageUrl: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      genres: ['Drama', 'Müzik'],
-    },
-    {
-      title: 'Joker',
-      year: '2019',
-      director: 'Todd Phillips',
-      rating: 8.4,
-      imageUrl: 'https://images.unsplash.com/photo-1559583109-3e7968136c99?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      genres: ['Suç', 'Drama', 'Gerilim'],
-    },
-    {
-      title: 'Coco',
-      year: '2017',
-      director: 'Lee Unkrich',
-      rating: 8.4,
-      imageUrl: 'https://images.unsplash.com/photo-1512149673953-1e251807ec7c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      genres: ['Animasyon', 'Macera', 'Aile'],
-    },
-    {
-      title: 'Soul',
-      year: '2020',
-      director: 'Pete Docter',
-      rating: 8.1,
-      imageUrl: 'https://images.unsplash.com/photo-1518834107812-67b0b7c58434?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-      genres: ['Animasyon', 'Macera', 'Komedi'],
-    },
-  ];
+  const isDark = theme === 'dark';
 
-  const toggleGenre = (genre: string) => {
-    if (selectedGenres.includes(genre)) {
-      setSelectedGenres(selectedGenres.filter(g => g !== genre));
+  // Load recommendations based on the most recently liked movie
+  useEffect(() => {
+    if (likedMovies.length > 0) {
+      const getRecs = async () => {
+        setIsLoadingRecs(true);
+        const lastLiked = likedMovies[likedMovies.length - 1];
+        const recs = await fetchSmartRecommendations(lastLiked.id);
+        setRecommendations(recs);
+        setIsLoadingRecs(false);
+      };
+      getRecs();
     } else {
-      setSelectedGenres([...selectedGenres, genre]);
+      setRecommendations([]);
     }
+  }, [likedMovies]);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    const results = await searchMovies(searchQuery);
+    setSearchResults(results.slice(0, 5));
+    setIsSearching(false);
   };
 
+  const addLikedMovie = (movie: any) => {
+    if (!likedMovies.find(m => m.id === movie.id)) {
+      setLikedMovies([...likedMovies, movie]);
+    }
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const removeLikedMovie = (id: number) => {
+    setLikedMovies(likedMovies.filter(m => m.id !== id));
+  };
+
+  const bgClass = isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100";
+  const textClass = isDark ? "text-white" : "text-gray-900";
+  const subTextClass = isDark ? "text-gray-400" : "text-gray-600";
+
   return (
-    <div className="space-y-8">
-      <div className="bg-blue-900 text-white p-6 rounded-xl">
-        <h1 className="text-3xl font-bold mb-2">Film Önerileri</h1>
-        <p className="text-blue-100">
-          Beğenilerinize göre kişiselleştirilmiş film önerileri alın.
-        </p>
+    <div className="space-y-8 animate-fadeIn">
+      {/* Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 p-8 rounded-3xl text-white shadow-xl">
+        <div className="relative z-10">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3">
+            <Sparkles className="text-yellow-300" />
+            AI Recommendations
+          </h1>
+          <p className="text-blue-50 max-w-2xl text-lg">
+            Add movies you've enjoyed, and our engine will find similar films matching their genres and cast.
+          </p>
+        </div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-grow relative">
-            <input
-              type="text"
-              placeholder="Beğendiğiniz bir film adı girin..."
-              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center justify-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-md hover:bg-blue-200 transition-colors"
-          >
-            <Filter size={18} />
-            <span>Filtreler</span>
-          </button>
-          <button className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
-            Öneriler Al
-          </button>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Likes & Search */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Search Section */}
+          <div className={`${bgClass} p-6 rounded-2xl border shadow-lg`}>
+            <h2 className={`text-xl font-bold mb-4 ${textClass} flex items-center gap-2`}>
+              <Plus className="text-blue-500" size={20} />
+              Add Liked Movies
+            </h2>
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="Search favorite movie..."
+                className={`w-full px-4 py-3 pl-10 rounded-xl border transition-all ${isDark
+                    ? "bg-gray-900 border-gray-700 text-white focus:border-blue-500"
+                    : "bg-gray-50 border-gray-200 focus:border-blue-500"
+                  }`}
+              />
+              <Search className="absolute left-3 top-3.5 text-gray-500" size={18} />
+              {isSearching && <Loader2 className="absolute right-3 top-3.5 animate-spin text-blue-500" size={18} />}
+            </div>
 
-        {/* Filters */}
-        {showFilters && (
-          <div className="mt-4 border-t border-gray-200 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Film Türleri</h3>
-                <div className="flex flex-wrap gap-2">
-                  {genres.map((genre) => (
-                    <button
-                      key={genre}
-                      onClick={() => toggleGenre(genre)}
-                      className={`px-3 py-1 text-sm rounded-full ${
-                        selectedGenres.includes(genre)
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && (
+              <div className={`absolute z-20 w-[calc(100%-3rem)] mt-[-10px] ${isDark ? 'bg-gray-800' : 'bg-white'} border rounded-xl overflow-hidden shadow-2xl`}>
+                {searchResults.map(movie => (
+                  <button
+                    key={movie.id}
+                    onClick={() => addLikedMovie(movie)}
+                    className={`w-full flex items-center gap-3 p-3 text-left transition-colors border-b last:border-0 ${isDark ? 'hover:bg-gray-700 border-gray-700 text-white' : 'hover:bg-blue-50 border-gray-100 text-gray-900'
                       }`}
+                  >
+                    <img src={movie.imageUrl} className="w-10 h-14 object-cover rounded" alt="" />
+                    <div>
+                      <div className="font-semibold text-sm">{movie.title}</div>
+                      <div className="text-xs opacity-60">{movie.year}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Liked List */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-sm font-bold uppercase tracking-wider text-blue-500`}>Your List</h3>
+                <span className="text-xs font-bold px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded-full">
+                  {likedMovies.length} movies
+                </span>
+              </div>
+
+              {likedMovies.length === 0 ? (
+                <div className={`text-center py-8 border-2 border-dashed rounded-xl ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <ThumbsUp className="mx-auto text-gray-400 mb-2 opacity-30" size={32} />
+                  <p className="text-xs text-gray-500">No movies added yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {likedMovies.map(movie => (
+                    <div
+                      key={movie.id}
+                      className={`flex items-center gap-3 p-2 rounded-xl border ${isDark ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'
+                        }`}
                     >
-                      {genre}
-                    </button>
+                      <img src={movie.imageUrl} className="w-8 h-12 object-cover rounded shadow" alt="" />
+                      <div className="flex-grow min-w-0">
+                        <div className={`font-bold text-sm truncate ${textClass}`}>{movie.title}</div>
+                        <div className="text-[10px] text-gray-500">{movie.year}</div>
+                      </div>
+                      <button
+                        onClick={() => removeLikedMovie(movie.id)}
+                        className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   ))}
                 </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Minimum IMDb Puanı: {minRating}</h3>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.1"
-                  value={minRating}
-                  onChange={(e) => setMinRating(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Yıl Aralığı: {yearRange[0]} - {yearRange[1]}
-                </h3>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    value={yearRange[0]}
-                    onChange={(e) => setYearRange([parseInt(e.target.value), yearRange[1]])}
-                    className="w-full px-3 py-1 border border-gray-300 rounded-md"
-                  />
-                  <span>-</span>
-                  <input
-                    type="number"
-                    value={yearRange[1]}
-                    onChange={(e) => setYearRange([yearRange[0], parseInt(e.target.value)])}
-                    className="w-full px-3 py-1 border border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Liked Films */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex items-center space-x-2 mb-4">
-          <ThumbsUp size={20} className="text-blue-600" />
-          <h2 className="text-lg font-semibold">Beğendiğiniz Filmler</h2>
-        </div>
-        <p className="text-gray-600 mb-4">
-          Daha iyi öneriler almak için beğendiğiniz filmleri ekleyin.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
-            <span>Inception</span>
-            <button className="ml-2 text-blue-600 hover:text-blue-800">×</button>
-          </div>
-          <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
-            <span>The Matrix</span>
-            <button className="ml-2 text-blue-600 hover:text-blue-800">×</button>
-          </div>
-          <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center">
-            <span>Pulp Fiction</span>
-            <button className="ml-2 text-blue-600 hover:text-blue-800">×</button>
-          </div>
-        </div>
-      </div>
+        {/* Right Column: Recommendations */}
+        <div className="lg:col-span-2">
+          {likedMovies.length === 0 ? (
+            <div className={`h-full flex flex-col items-center justify-center text-center p-12 ${bgClass} rounded-2xl border border-dashed`}>
+              <Sparkles className="text-blue-500 opacity-20 mb-4" size={64} />
+              <h2 className={`text-2xl font-bold mb-2 ${textClass}`}>Waiting for your input</h2>
+              <p className={subTextClass}>Add a movie you enjoy to generate recommendations.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className={`text-2xl font-bold ${textClass}`}>Recommended for You</h2>
+                {isLoadingRecs && <Loader2 className="animate-spin text-blue-500" />}
+              </div>
 
-      {/* Recommendations */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6">Sizin İçin Öneriler</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recommendedFilms.map((film, index) => (
-            <FilmCard key={index} {...film} />
-          ))}
-        </div>
-      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {recommendations.map((movie, idx) => (
+                  <FilmCard
+                    key={`${movie.id}-${idx}`}
+                    {...movie}
+                    theme={theme}
+                    onClick={() => onMovieSelect?.(movie.id)}
+                  />
+                ))}
+              </div>
 
-      {/* Recommendation Categories */}
-      <div className="space-y-8">
-        <div>
-          <h2 className="text-xl font-bold mb-4">Bilim Kurgu Sevenlere</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendedFilms.slice(0, 3).map((film, index) => (
-              <FilmCard key={index} {...film} />
-            ))}
-          </div>
-        </div>
-        <div>
-          <h2 className="text-xl font-bold mb-4">Drama Tutkunlarına</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recommendedFilms.slice(3, 6).map((film, index) => (
-              <FilmCard key={index} {...film} />
-            ))}
-          </div>
+              {recommendations.length === 0 && !isLoadingRecs && (
+                <div className="text-center py-20">
+                  <p className={subTextClass}>Analyzing data... Try adding another movie if nothing shows up.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
