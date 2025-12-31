@@ -3,9 +3,11 @@ const cors = require('cors');
 const axios = require('axios');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const TMDB_API_KEY = '6e6bbb0bcadecf02d466fa7b5b37a1b6';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const NEWS_API_KEY = '5d35ad08e3bb465981908b48139859fb';
+const NEWS_API_URL = 'https://newsapi.org/v2';
 
 app.use(cors());
 app.use(express.json());
@@ -198,6 +200,49 @@ app.get('/api/movie/:id', async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch movie details' });
+    }
+});
+
+// News API Proxy Endpoints
+app.get('/api/news/actors', async (req, res) => {
+    try {
+        const searchQuery = encodeURIComponent(
+            '("actor" OR "actress" OR "celebrity" OR "Hollywood star" OR "movie star") AND (film OR movie OR premiere OR award OR interview)'
+        );
+        const response = await axios.get(`${NEWS_API_URL}/everything`, {
+            params: {
+                q: searchQuery,
+                language: 'en',
+                sortBy: 'publishedAt',
+                pageSize: 100,
+                apiKey: NEWS_API_KEY
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('News API Actor Error:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to fetch actors news' });
+    }
+});
+
+app.get('/api/news/movies', async (req, res) => {
+    try {
+        const searchQuery = encodeURIComponent(
+            '("movie" OR "film" OR "cinema" OR "box office" OR "blockbuster") AND (release OR trailer OR review OR premiere OR streaming)'
+        );
+        const response = await axios.get(`${NEWS_API_URL}/everything`, {
+            params: {
+                q: searchQuery,
+                language: 'en',
+                sortBy: 'publishedAt',
+                pageSize: 100,
+                apiKey: NEWS_API_KEY
+            }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error('News API Movie Error:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to fetch movies news' });
     }
 });
 

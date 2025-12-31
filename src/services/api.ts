@@ -387,6 +387,18 @@ export const fetchSmartRecommendations = async (movieId: number) => {
 const NEWS_API_KEY = '5d35ad08e3bb465981908b48139859fb';
 const NEWS_API_URL = 'https://newsapi.org/v2';
 
+// Helper to get News API URL with CORS proxy if needed
+const getProxiedNewsUrl = (endpoint: string, params: string) => {
+    const baseUrl = `${NEWS_API_URL}${endpoint}?${params}&apiKey=${NEWS_API_KEY}`;
+
+    // In production, we need a CORS proxy for NewsAPI.org
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`;
+    }
+
+    return baseUrl;
+};
+
 export interface NewsArticle {
     id: string;
     title: string;
@@ -538,13 +550,13 @@ const mapNewsArticle = (article: any, index: number): NewsArticle => ({
 export const fetchActorsNews = async (limit: number = 10): Promise<NewsArticle[]> => {
     try {
         // More specific search query for actors/celebrities
-        const searchQuery = encodeURIComponent(
-            '("actor" OR "actress" OR "celebrity" OR "Hollywood star" OR "movie star") AND (film OR movie OR premiere OR award OR interview)'
-        );
+        const searchQuery =
+            '("actor" OR "actress" OR "celebrity" OR "Hollywood star" OR "movie star") AND (film OR movie OR premiere OR award OR interview)';
 
-        const response = await fetch(
-            `${NEWS_API_URL}/everything?q=${searchQuery}&language=en&sortBy=publishedAt&pageSize=100&apiKey=${NEWS_API_KEY}`
-        );
+        const params = `q=${encodeURIComponent(searchQuery)}&language=en&sortBy=publishedAt&pageSize=100`;
+        const url = getProxiedNewsUrl('/everything', params);
+
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error('Failed to fetch actors news');
@@ -589,13 +601,13 @@ export const fetchActorsNews = async (limit: number = 10): Promise<NewsArticle[]
 export const fetchMoviesNews = async (limit: number = 10): Promise<NewsArticle[]> => {
     try {
         // More specific search query for movies
-        const searchQuery = encodeURIComponent(
-            '("movie" OR "film" OR "cinema" OR "box office" OR "blockbuster") AND (release OR trailer OR review OR premiere OR streaming)'
-        );
+        const searchQuery =
+            '("movie" OR "film" OR "cinema" OR "box office" OR "blockbuster") AND (release OR trailer OR review OR premiere OR streaming)';
 
-        const response = await fetch(
-            `${NEWS_API_URL}/everything?q=${searchQuery}&language=en&sortBy=publishedAt&pageSize=100&apiKey=${NEWS_API_KEY}`
-        );
+        const params = `q=${encodeURIComponent(searchQuery)}&language=en&sortBy=publishedAt&pageSize=100`;
+        const url = getProxiedNewsUrl('/everything', params);
+
+        const response = await fetch(url);
 
         if (!response.ok) {
             throw new Error('Failed to fetch movies news');
